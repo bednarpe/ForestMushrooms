@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ForestMushrooms/ForestMushrooms.csproj" />
+    <Reference Include="$(GameManaged)\Timberborn.*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\UnityEngine*.dll" Private="false" />
+    <Reference Include="$(HarmonyPath)" Private="false" />
+    <Reference Include="$(ModSettingsPath)\ModSettings.Core.dll" Private="false" />
+  </ItemGroup>
+</Project>

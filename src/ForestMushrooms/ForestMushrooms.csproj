@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ForestMushrooms</AssemblyName>
+    <Version>0.1.15</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameManaged)\Timberborn.*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\UnityEngine*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\Bindito.*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\System.Collections.Immutable.dll" Private="false" />
+    <Reference Include="$(GameManaged)\Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="$(HarmonyPath)" Private="false" />
+    <Reference Include="$(ModSettingsPath)\ModSettings.Core.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckGame" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(ModSettingsPath)\ModSettings.Core.dll')" Text="Set ModSettingsPath to the installed Mod Settings 1.1 Scripts directory." />
+    <Error Condition="!Exists('$(GameManaged)\Timberborn.Gathering.dll')" Text="Set TimberbornPath to the Timberborn 1.1 installation." />
+    <Error Condition="!Exists('$(HarmonyPath)')" Text="Set HarmonyPath to the installed Harmony mod's 0Harmony.dll." />
+  </Target>
+</Project>

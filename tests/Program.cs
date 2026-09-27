@@ -1,0 +1,120 @@
+using System;
+using System.Text.Json;
+using ForestMushrooms.Core;
+
+int checks = 0;
+void Check(bool value, string name) { if (!value) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
+MushroomState Ready() { var s = MushroomState.Create(42); s.ForceMature(); return s; }
+
+var s = MushroomState.Create(42); s.RemainingDays = 0;
+s.Advance(39.9, true, true, true, true);
+Check(!s.HasMushroom, "40-day minimum");
+s.Advance(0.1, true, true, true, true);
+Check(s.HasMushroom, "exact age threshold");
+s = Ready(); s.Advance(0, true, true, false, true);
+Check(!s.HasMushroom && s.WetDays == 0, "dry event immediately destroys crop and resets wet streak");
+s.RemainingDays = 0; s.Advance(7.99, true, true, true, true);
+Check(!s.HasMushroom, "rewatering requires full consecutive 8 days");
+s.Advance(0.02, true, true, true, true);
+Check(s.HasMushroom, "rewatering eventually produces crop");
+s = Ready(); s.Advance(0, true, true, true, false);
+Check(!s.HasMushroom, "edge creation destroys existing crop");
+double remaining = s.RemainingDays; s.Advance(100, true, true, true, false);
+Check(s.RemainingDays == remaining, "edge trees cannot advance random countdown");
+s = Ready(); Check(s.Harvest() && !s.Harvest(), "crop cannot be harvested twice");
+Check(s.RemainingDays >= 12 && s.RemainingDays <= 20, "regrowth bounded to 12-20 days");
+remaining = s.RemainingDays; s.Advance(remaining - 0.01, true, true, true, true);
+Check(!s.HasMushroom, "no early regrowth");
+s.Advance(0.02, true, true, true, true); Check(s.HasMushroom, "scheduled regrowth");
+s.Cut(); Check(s.AgeDays == 0 && s.WetDays == 0 && !s.HasMushroom, "chopping resets age and fruit");
+s = Ready(); s.Advance(100, false, true, true, true);
+Check(!s.HasMushroom, "dead tree cannot fruit");
+s = MushroomState.Create(16); s.RemainingDays = 20;
+s.Advance(50, true, true, true, true);
+Check(s.RemainingDays == 10, "large timestep counts only eligible fraction");
+var split = MushroomState.Create(16); split.RemainingDays = 20;
+for (int i = 0; i < 5000; i++) split.Advance(.01, true, true, true, true);
+Check(Math.Abs(split.RemainingDays - s.RemainingDays) < 1e-8, "timestep invariance");
+s = Ready(); s.Harvest();
+var restored = JsonSerializer.Deserialize<MushroomState>(JsonSerializer.Serialize(s));
+s.Advance(30, true, true, true, true); restored.Advance(30, true, true, true, true);
+s.Harvest(); restored.Harvest();
+Check(s.RemainingDays == restored.RemainingDays && s.RandomState == restored.RandomState, "save/load preserves next random draw");
+double total = 0; int initialBy92 = 0;
+var seeds = new Random(1234);
+for (int i = 0; i < 100000; i++)
+{
+    var x = MushroomState.Create((uint)seeds.NextInt64(1, uint.MaxValue));
+    if (x.RemainingDays <= 73.6827) initialBy92++;
+    x.ForceMature(); x.Harvest(); total += x.RemainingDays;
+}
+Check(Math.Abs(total / 100000 - 16) < .04, "100,000 regrowth samples average 16 days");
+Check(initialBy92 > 98700 && initialBy92 < 99300, "initial spawn probability about 99% after 74 eligible days");
+Check(!TreeEligibility.IsHost(true, "Succulent"), "succulents are excluded despite their TreeComponentSpec");
+Check(!TreeEligibility.IsHost(true, "Succulent.LeafCoats"), "faction succulent variants are excluded");
+Check(TreeEligibility.IsHost(true, "Pine"), "ordinary trees remain eligible");
+Check(!TreeEligibility.IsHost(false, "BlueberryBush"), "non-tree plants are excluded");
+Check(TreeEligibility.CountNeighbors((x,y) => x == 0 || y == 0) == 4, "cross qualifies without diagonals");
+Check(TreeEligibility.CountNeighbors((x,y) => x != 0 && y != 0) == 0, "diagonals cannot substitute for cardinal trees");
+foreach (var missing in new[] { (-1,0), (1,0), (0,-1), (0,1) })
+    Check(TreeEligibility.CountNeighbors((x,y) => (x,y) != missing) == 3, $"missing side {missing} blocks growth");
+var fast = new MushroomTiming(2, 1, 0, 3, 3, 2);
+s = MushroomState.Create(42, fast);
+s.Advance(2, true, true, true, true, fast);
+Check(s.HasMushroom, "custom age and watering thresholds with zero initial delay");
+s.Harvest(fast);
+Check(s.RemainingDays == 3, "equal custom regrowth bounds produce a fixed wait");
+var savedWait = s.RemainingDays;
+s.Advance(0, true, true, true, true, new MushroomTiming(2,1,200,100,200));
+Check(s.RemainingDays == savedWait, "changing settings does not reroll existing countdown");
+s.ForceMature(new MushroomTiming(200,30));
+Check(s.AgeDays == 200 && s.WetDays == 30, "debug maturity honors configured thresholds");
+s.Cut(fast);
+Check(s.RemainingDays == 0 && s.AgeDays == 0, "cutting uses configured initial delay");
+var invalid = new MushroomTiming(double.NaN, -5, double.PositiveInfinity, 30, 4, 0);
+Check(invalid.MinimumAge == 40 && invalid.RequiredWetDays == 0 && invalid.InitialMeanDays == 16 && invalid.RegrowthMaxDays == 30 && invalid.PickingHours == .01, "timing inputs remain finite and ordered");
+s = Ready();
+s.Advance(0, false, true, false, false);
+Check(s.HasMushroom, "death retains an existing crop even without moisture or neighbors");
+s.Advance(1, false, true, false, false);
+restored = JsonSerializer.Deserialize<MushroomState>(JsonSerializer.Serialize(s));
+restored.Advance(.99, false, true, false, false);
+Check(restored.HasMushroom && restored.DeadDays == 1.99, "dead crop timer survives save/load");
+restored.Advance(.02, false, true, false, false);
+Check(!restored.HasMushroom, "dead crop expires after configured two days");
+Check(s.Harvest() && !s.Harvest(), "dead crop can be harvested only once");
+s.Advance(100, false, true, true, true);
+Check(!s.HasMushroom, "harvested dead tree never regrows mushrooms");
+s = Ready(); s.Advance(1, false, true, true, true); s.Cut();
+Check(!s.HasMushroom && s.DeadDays == 0, "cutting removes a retained dead crop immediately");
+s = Ready(); s.Advance(0, false, true, true, true, new MushroomTiming(deadTreeDays: 0));
+Check(!s.HasMushroom, "zero dead-tree timeout removes crop on death");
+s = Ready(); s.Advance(1.5, false, true, true, true);
+s.Advance(0, false, true, true, true, new MushroomTiming(deadTreeDays: 1));
+Check(!s.HasMushroom, "shortened timeout expires existing dead crops");
+s = MushroomState.Create(1); s.Advance(100, false, true, true, true);
+Check(!s.HasMushroom, "dead trees without crops cannot start growing");
+s = Ready();
+double ageBeforeContamination = s.AgeDays;
+s.Advance(0, true, true, true, true, contaminated: true);
+Check(!s.HasMushroom && s.WetDays == 0 && s.AgeDays == ageBeforeContamination && !s.Harvest(),
+    "contamination removes ripe crop and blocks harvest without resetting tree age");
+remaining = s.RemainingDays; uint rngBeforeContamination = s.RandomState;
+s.Advance(100, true, true, true, true, contaminated: true);
+Check(!s.HasMushroom && s.WetDays == 0 && s.RemainingDays == remaining && s.RandomState == rngBeforeContamination,
+    "contamination pauses growth without rerolling every tick");
+restored = JsonSerializer.Deserialize<MushroomState>(JsonSerializer.Serialize(s));
+restored.Advance(1, true, true, true, true, contaminated: true);
+Check(restored.WasContaminated && restored.RemainingDays == remaining && restored.RandomState == rngBeforeContamination,
+    "contamination state and fresh wait persist across save/load");
+s.Advance(7.99, true, true, true, true);
+Check(!s.HasMushroom && s.RemainingDays == remaining, "clean soil requires a new full moist streak");
+s.Advance(remaining + .02, true, true, true, true);
+Check(s.HasMushroom, "growth resumes after clean moisture and restarted initial wait");
+s = Ready(); s.Advance(.5, false, true, false, false);
+s.Advance(0, false, true, false, false, contaminated: true);
+Check(!s.HasMushroom && !s.Harvest(), "contamination overrides dead-tree grace period");
+s = MushroomState.Create(42); s.RemainingDays = .01;
+s.Advance(0, true, true, true, true, contaminated: true);
+Check(s.RemainingDays != .01 && !s.HasMushroom, "contamination restarts partially grown crops too");
+Console.WriteLine($"{checks} checks passed.");

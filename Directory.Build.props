@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <TimberbornPath Condition="'$(TimberbornPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Timberborn</TimberbornPath>
+    <GameManaged>$(TimberbornPath)\Timberborn_Data\Managed</GameManaged>
+    <HarmonyPath Condition="'$(HarmonyPath)' == ''">C:\Program Files (x86)\Steam\steamapps\workshop\content\1062090\3284904751\0Harmony.dll</HarmonyPath>
+    <ModSettingsPath Condition="'$(ModSettingsPath)' == ''">C:\Program Files (x86)\Steam\steamapps\workshop\content\1062090\3283831040\version-1.1\Scripts</ModSettingsPath>
+  </PropertyGroup>
+  <Import Project="local.props" Condition="Exists('local.props')" />
+</Project>

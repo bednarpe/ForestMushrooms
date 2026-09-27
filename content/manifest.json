@@ -1,0 +1,10 @@
+{
+  "Name": "Forest Mushrooms",
+  "Version": "0.1.15",
+  "Id": "Bedna.ForestMushrooms",
+  "AuthorName": "bedna",
+  "MinimumGameVersion": "1.1.0.0",
+  "Description": "Old, irrigated forest interiors grow gatherable mushrooms. Automatically adds mushroom food and nutrition to factions and the recipe to standard fermenters. Includes a Folktails fermenter and developer tree diagnostics.",
+  "RequiredMods": [{ "Id": "Harmony", "MinimumVersion": "2.4.1" }, { "Id": "eMka.ModSettings", "MinimumVersion": "1.1.1.0" }],
+  "OptionalMods": [{ "Id": "LeafCoats" }]
+}

@@ -1,0 +1,11 @@
+.tools/
+.reference/
+**/bin/
+**/obj/
+dist/
+*.user
+local.props
+.idea/
+.vs/
+.env
+.env.*
